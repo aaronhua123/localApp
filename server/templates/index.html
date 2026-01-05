@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>文件服务器</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .file-list { border: 1px solid #ddd; padding: 10px; margin: 20px 0; }
+        .file-item { padding: 5px; border-bottom: 1px solid #eee; }
+        .file-item:last-child { border-bottom: none; }
+        button { margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>文件服务器</h1>
+
+    <!-- 上传表单 -->
+    <div>
+        <h2>上传文件</h2>
+        <form id="uploadForm">
+            <input type="file" name="file" id="fileInput">
+            <button type="submit">上传</button>
+        </form>
+    </div>
+
+    <!-- 文件列表 -->
+    <div>
+        <h2>文件列表</h2>
+        <div id="fileList" class="file-list">
+            <!-- 文件列表会在这里动态加载 -->
+        </div>
+    </div>
+
+    <script>
+        // 加载文件列表
+        async function loadFiles() {
+            const response = await fetch('/files');
+            const files = await response.json();
+            const fileList = document.getElementById('fileList');
+
+            fileList.innerHTML = '';
+            files.forEach(file => {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `
+                    <span>${file.name}</span>
+                    <span style="color: #666; margin-left: 20px;">
+                        ${Math.round(file.size / 1024)} KB
+                    </span>
+                    <button onclick="downloadFile('${file.name}')">下载</button>
+                    <button onclick="deleteFile('${file.name}')">删除</button>
+                `;
+                fileList.appendChild(div);
+            });
+        }
+
+        // 下载文件
+        function downloadFile(filename) {
+            window.open(`/download/${filename}`);
+        }
+
+        // 删除文件
+        async function deleteFile(filename) {
+            if (confirm(`确定删除 ${filename} 吗？`)) {
+                const response = await fetch(`/delete/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    loadFiles();
+                }
+            }
+        }
+
+        // 处理文件上传
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const fileInput = document.getElementById('fileInput');
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            alert(result.message || result.error);
+
+            if (response.ok) {
+                fileInput.value = '';
+                loadFiles();
+            }
+        });
+
+        // 初始加载文件列表
+        loadFiles();
+    </script>
+</body>
+</html>
